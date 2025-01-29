@@ -1,0 +1,41 @@
+{
+  "name": "boilerplate-app",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "tools/boilerplate-app/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/tools/boilerplate-app",
+        "main": "tools/boilerplate-app/src/index.ts",
+        "tsConfig": "tools/boilerplate-app/tsconfig.lib.json",
+        "assets": [
+          "tools/boilerplate-app/*.md",
+          {
+            "input": "./tools/boilerplate-app/src",
+            "glob": "**/!(*.ts)",
+            "output": "./src"
+          },
+          {
+            "input": "./tools/boilerplate-app/src",
+            "glob": "**/*.d.ts",
+            "output": "./src"
+          },
+          {
+            "input": "./tools/boilerplate-app",
+            "glob": "generators.json",
+            "output": "."
+          },
+          {
+            "input": "./tools/boilerplate-app",
+            "glob": "executors.json",
+            "output": "."
+          }
+        ]
+      }
+    }
+  }
+}
