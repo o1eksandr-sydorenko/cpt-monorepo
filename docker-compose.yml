@@ -1,0 +1,165 @@
+# docker-compose -f main_app/docker-compose_tools.yml up -d krakend
+# docker ps -aq; docker stop $(docker ps -aq); docker rm $(docker ps -aq); docker rmi $(docker images -q); docker ps -a; docker images
+version: "3"
+services:
+  database:
+    image: postgres
+    container_name: database
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    networks:
+      midchains:
+        ipv4_address: 10.5.0.1
+    volumes:
+      - database:/var/lib/postgresql/data
+    restart: on-failure
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin4_container
+    networks:
+      midchains:
+        ipv4_address: 10.5.0.2
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@gmail.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    restart: on-failure
+
+  zookeeper:
+    image: bitnami/zookeeper:latest
+    container_name: zookeeper
+    networks:
+      midchains:
+        ipv4_address: 10.5.0.3
+    ports:
+      - 2181:2181
+    environment:
+      ALLOW_ANONYMOUS_LOGIN: 'no'
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_SERVER_ID: 1
+      ZOOKEEPER_INIT_LIMIT: 5
+      ZOOKEEPER_SYNC_LIMIT: 2
+      ZOOKEEPER_SERVERS: server.1=zookeeper:2888:3888
+    restart: on-failure
+
+  kafka:
+    image: bitnami/kafka:latest
+    container_name: kafka
+    networks:
+      midchains:
+        ipv4_address: 10.5.0.4
+    depends_on:
+      - zookeeper
+    ports:
+      - 9093:9093
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181  # Corrected Zookeeper address
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:SASL_SSL,EXTERNAL:SASL_SSL
+      KAFKA_CFG_LISTENERS: INTERNAL://:9092,EXTERNAL://:9093
+      KAFKA_CFG_ADVERTISED_LISTENERS: INTERNAL://10.5.0.4:9092,EXTERNAL://10.5.0.4:9093
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: 'false'  # Disable auto topic creation for security
+      KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR: 1
+
+      # Enable SASL/SCRAM authentication
+      KAFKA_CFG_SECURITY_INTER_BROKER_PROTOCOL: SASL_SSL
+      KAFKA_CFG_SASL_MECHANISM_INTER_BROKER_PROTOCOL: SCRAM-SHA-512
+      KAFKA_CFG_SASL_ENABLED_MECHANISMS: SCRAM-SHA-512
+      KAFKA_CFG_SASL_JAAS_CONFIG: |
+        org.apache.kafka.common.security.scram.ScramLoginModule required
+        username="admin"
+        password="admin-secret";
+
+      # Enable authorization
+      KAFKA_CFG_AUTHORIZER_CLASS_NAME: kafka.security.auth.SimpleAclAuthorizer
+      KAFKA_CFG_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "false"
+      KAFKA_CFG_SUPER_USERS: "User:admin"
+
+      # SSL Configuration (assuming you have certificates)
+      KAFKA_CFG_SSL_KEYSTORE_FILENAME: kafka.keystore.jks
+      KAFKA_CFG_SSL_KEYSTORE_CREDENTIALS: keystore_creds
+      KAFKA_CFG_SSL_KEY_CREDENTIALS: key_creds
+      KAFKA_CFG_SSL_TRUSTSTORE_FILENAME: kafka.truststore.jks
+      KAFKA_CFG_SSL_TRUSTSTORE_CREDENTIALS: truststore_creds
+      KAFKA_CFG_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: ""
+
+      # Define users and ACLs (you might want to manage this externally or via scripts)
+      KAFKA_CFG_KAFKA_OPTS: "-Djava.security.auth.login.config=/opt/bitnami/kafka/config/kafka_server_jaas.conf"
+    volumes:
+      - ./kafka/secrets:/opt/bitnami/kafka/config/secrets
+      - ./kafka/config/kafka_server_jaas.conf:/opt/bitnami/kafka/config/kafka_server_jaas.conf
+    restart: on-failure
+
+  kafdrop:
+    image: obsidiandynamics/kafdrop:latest
+    container_name: kafdrop
+    networks:
+      midchains:
+        ipv4_address: 10.5.0.6
+    depends_on:
+      - kafka
+    ports:
+      - 9000:9000
+    environment:
+      KAFKA_BROKERCONNECT: 10.5.0.5:9092
+    restart: on-failure
+
+  keycloak:
+    image: bitnami/keycloak:latest
+    container_name: keycloak
+    networks:
+      midchains:
+        ipv4_address: 10.5.1.1
+    ports:
+      - 8081:8081
+      - 8082:8082
+    depends_on:
+      - database
+    environment:
+      KEYCLOAK_DATABASE_HOST: 10.5.0.2
+      KEYCLOAK_DATABASE_PORT: 5432
+      KEYCLOAK_DATABASE_NAME: keycloak
+      KEYCLOAK_DATABASE_SCHEMA: public
+      KEYCLOAK_DATABASE_USER: postgres
+      KEYCLOAK_DATABASE_PASSWORD: postgres
+      KEYCLOAK_ADMIN_USER: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      # Binding address
+      KEYCLOAK_HTTP_PORT: 8081
+      KEYCLOAK_HTTPS_PORT: 8082
+      KEYCLOAK_BIND_ADDRESS: 10.5.1.1
+    restart: on-failure
+
+## Api gate way krakend
+  kraken_designer:
+    image: devopsfaith/krakendesigner:v2.0
+    container_name: krakend_designer
+    networks:
+      midchains:
+        ipv4_address: 10.5.0.7
+    ports:
+      - 8787:80
+    restart: on-failure
+
+volumes:
+  database:
+    driver: local
+  pgadmin-data: #
+
+networks:
+  midchains:
+    driver: bridge
+    ipam:
+     config:
+       - subnet: 10.5.0.0/16

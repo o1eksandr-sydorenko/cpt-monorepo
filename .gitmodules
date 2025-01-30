@@ -4,3 +4,6 @@
 [submodule "tools/app-tmpl"]
 	path = tools/app-tmpl
 	url = https://github.com/o1eksandr-sydorenko/cpt-app-tmpl-tool.git
+[submodule "tools/kafka"]
+	path = tools/kafka
+	url = https://github.com/o1eksandr-sydorenko/cpt-kafka-tool.git
