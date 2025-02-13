@@ -12,7 +12,7 @@ services:
       - POSTGRES_PASSWORD=postgres
     networks:
       cpt:
-        ipv4_address: 10.5.0.2
+        ipv4_address: 10.6.0.2
     volumes:
       - database:/var/lib/postgresql/data
     restart: on-failure
@@ -22,7 +22,7 @@ services:
     container_name: pgadmin4_container
     networks:
       cpt:
-        ipv4_address: 10.5.0.3
+        ipv4_address: 10.6.0.3
     ports:
       - "5051:80"
     environment:
@@ -37,11 +37,11 @@ services:
     container_name: zookeeper
     networks:
       cpt:
-        ipv4_address: 10.5.0.4
+        ipv4_address: 10.6.0.4
     ports:
       - 2181:2181
     environment:
-      ALLOW_ANONYMOUS_LOGIN: 'yes'
+      ALLOW_ANONYMOUS_LOGIN: "yes"
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
     restart: on-failure
@@ -51,21 +51,21 @@ services:
     container_name: kafka
     networks:
       cpt:
-        ipv4_address: 10.5.0.5
+        ipv4_address: 10.6.0.5
     depends_on:
       - zookeeper
     ports:
       - 9094:9093
     environment:
       KAFKA_BROKER_ID: 1
-      ALLOW_PLAINTEXT_LISTENER: 'yes'
-      KAFKA_CFG_ZOOKEEPER_CONNECT: 10.5.0.4:2181
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+      KAFKA_CFG_ZOOKEEPER_CONNECT: 10.6.0.4:2181
       KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: CLIENT:PLAINTEXT,EXTERNAL:PLAINTEXT
       KAFKA_CFG_LISTENERS: CLIENT://:9092,EXTERNAL://:9093
-      KAFKA_CFG_ADVERTISED_LISTENERS: CLIENT://10.5.0.5:9092,EXTERNAL://10.5.0.5:9093
+      KAFKA_CFG_ADVERTISED_LISTENERS: CLIENT://10.6.0.5:9092,EXTERNAL://10.6.0.5:9093
       KAFKA_CFG_INTER_BROKER_LISTENER_NAME: CLIENT
       KAFKA_CFG_BROKER_ID: 1
-      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
       KAFKA_CFG_DEFAULT_REPLICATION_FACTOR: 1
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
@@ -77,15 +77,38 @@ services:
     container_name: kafdrop
     networks:
       cpt:
-        ipv4_address: 10.5.0.6
+        ipv4_address: 10.6.0.6
     depends_on:
       - kafka
     ports:
       - 9001:9000
     environment:
-      KAFKA_BROKERCONNECT: 10.5.0.5:9092
+      KAFKA_BROKERCONNECT: 10.6.0.5:9092
     restart: on-failure
 
+  users:
+    container_name: users
+    networks:
+      cpt:
+        ipv4_address: 10.6.0.7
+    volumes:
+      - ./apps/users:/app/apps/users
+      - ./libs:/app/libs
+      - ./apps/users/.env.example:/app/.env.example
+      - ./tsconfig.base.json:/app/tsconfig.base.json
+      - ./package.json:/app/package.json
+    build:
+      context: ./
+      dockerfile: ./apps/users/Dockerfile
+      args:
+        NODE_ENV: "monorepo"
+        BUILD_FLAG: ""
+    ports:
+      - 3001:3001
+    environment:
+      NODE_ENV: "monorepo"
+    restart: on-failure
+    command: sh -c "npm start users --verbose"
 volumes:
   database:
     driver: local
@@ -95,5 +118,5 @@ networks:
   cpt:
     driver: bridge
     ipam:
-     config:
-       - subnet: 10.5.0.0/16
+      config:
+        - subnet: 10.6.0.0/16
