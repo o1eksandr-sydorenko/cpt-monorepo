@@ -1,6 +1,4 @@
-# docker-compose -f main_app/docker-compose_tools.yml up -d krakend
-# docker ps -aq; docker stop $(docker ps -aq); docker rm $(docker ps -aq); docker rmi $(docker images -q); docker ps -a; docker images
-version: "3"
+version: "3.8"
 services:
   database:
     image: postgres
@@ -11,8 +9,7 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
     networks:
-      cpt:
-        ipv4_address: 10.6.0.2
+      - cpt
     volumes:
       - database:/var/lib/postgresql/data
     restart: on-failure
@@ -21,8 +18,7 @@ services:
     image: dpage/pgadmin4
     container_name: pgadmin4_container
     networks:
-      cpt:
-        ipv4_address: 10.6.0.3
+      - cpt
     ports:
       - "5051:80"
     environment:
@@ -36,8 +32,7 @@ services:
     image: bitnami/zookeeper:latest
     container_name: zookeeper
     networks:
-      cpt:
-        ipv4_address: 10.6.0.4
+      - cpt
     ports:
       - 2181:2181
     environment:
@@ -50,8 +45,7 @@ services:
     image: bitnami/kafka:latest
     container_name: kafka
     networks:
-      cpt:
-        ipv4_address: 10.6.0.5
+      - cpt
     depends_on:
       - zookeeper
     ports:
@@ -59,10 +53,10 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       ALLOW_PLAINTEXT_LISTENER: "yes"
-      KAFKA_CFG_ZOOKEEPER_CONNECT: 10.6.0.4:2181
+      KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: CLIENT:PLAINTEXT,EXTERNAL:PLAINTEXT
       KAFKA_CFG_LISTENERS: CLIENT://:9092,EXTERNAL://:9093
-      KAFKA_CFG_ADVERTISED_LISTENERS: CLIENT://10.6.0.5:9092,EXTERNAL://10.6.0.5:9093
+      KAFKA_CFG_ADVERTISED_LISTENERS: CLIENT://kafka:9092,EXTERNAL://kafka:9093
       KAFKA_CFG_INTER_BROKER_LISTENER_NAME: CLIENT
       KAFKA_CFG_BROKER_ID: 1
       KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
@@ -76,24 +70,84 @@ services:
     image: obsidiandynamics/kafdrop:latest
     container_name: kafdrop
     networks:
-      cpt:
-        ipv4_address: 10.6.0.6
+      - cpt
     depends_on:
       - kafka
     ports:
       - 9001:9000
     environment:
-      KAFKA_BROKERCONNECT: 10.6.0.5:9092
+      KAFKA_BROKERCONNECT: kafka:9092
     restart: on-failure
+
+  keycloack-db:
+    image: postgres
+    container_name: keycloack-db
+    restart: always
+    networks:
+      - cpt
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+    ports:
+      - "5435:5432"
+    volumes:
+      - keycloack-data:/var/lib/postgresql/data
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:latest
+    container_name: keycloak
+    restart: always
+    command: start-dev
+    networks:
+      - cpt
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloack-db:5432/keycloak
+      KC_DB_USERNAME: admin
+      KC_DB_PASSWORD: admin
+      KC_HOSTNAME: localhost
+    ports:
+      - "8081:8080"
+    depends_on:
+      - keycloack-db
+    volumes:
+      - ./tools/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json
+
+  # kong:
+  #   image: kong:latest
+  #   container_name: kong
+  #   restart: always
+  #   networks:
+  #     - cpt
+  #   environment:
+  #     KONG_DATABASE: "off"
+  #     KONG_DECLARATIVE_CONFIG: /etc/kong/kong.yml
+  #     KONG_PROXY_ACCESS_LOG: /dev/stdout
+  #     KONG_ADMIN_ACCESS_LOG: /dev/stdout
+  #     KONG_PROXY_ERROR_LOG: /dev/stderr
+  #     KONG_ADMIN_ERROR_LOG: /dev/stderr
+  #     KONG_ADMIN_LISTEN: "localhost:8001"
+  #     KONG_PROXY_LISTEN: "localhost:8000, localhost:8443 ssl"
+  #   ports:
+  #     - "8000:8000" # Public API Gateway
+  #     - "8443:8443" # Secure API Gateway (HTTPS)
+  #     - "8001:8001" # Kong Admin API
+  #   volumes:
+  #     - ./tools/kong/kong.yml:/etc/kong/kong.yml
+  #   depends_on:
+  #     - keycloak
 
   users:
     container_name: users
     networks:
-      cpt:
-        ipv4_address: 10.6.0.7
+      - cpt
     volumes:
       - ./apps/users:/app/apps/users
       - ./libs:/app/libs
+      - ./apps/users/.env:/app/.env
       - ./apps/users/.env.example:/app/.env.example
       - ./tsconfig.base.json:/app/tsconfig.base.json
       - ./package.json:/app/package.json
@@ -104,19 +158,22 @@ services:
         NODE_ENV: "monorepo"
         BUILD_FLAG: ""
     ports:
-      - 3001:3001
+      - 4000:4000
     environment:
       NODE_ENV: "monorepo"
+      DATABASE_URL: "postgresql://postgres:postgres@database:5432/postgres?schema=public"
     restart: on-failure
-    command: sh -c "npm start users --verbose"
+    command: sh -c "npx nx prisma-generate users
+      && npx nx prisma-deploy users
+      && npm start users --verbose"
+
 volumes:
   database:
     driver: local
-  pgadmin-data: #
+  keycloack-data:
+    driver: local
+  pgadmin-data:
 
 networks:
   cpt:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 10.6.0.0/16

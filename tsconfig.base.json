@@ -33,7 +33,8 @@
     "forceConsistentCasingInFileNames": false,
     "paths": {
       "@cpt/boilerplate-app": ["tools/boilerplate-app/src/index.ts"],
-      "@cpt/common": ["libs/common/src/index.ts"]
+      "@cpt/common": ["libs/common/src/index.ts"],
+      "@cpt/graphql": ["libs/graphql/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

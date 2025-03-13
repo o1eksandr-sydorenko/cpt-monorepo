@@ -23,6 +23,8 @@ module.exports = [
           ],
         },
       ],
+      '@typescript-eslint/no-unsafe-function-type': 'off',
+      // 'padding-line-between-statements': ['error', { blankLine: 'always', prev: '*', next: ['if', 'for', 'while', 'return'] }],
     },
   },
   {
