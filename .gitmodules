@@ -7,3 +7,12 @@
 [submodule "tools/kafka"]
 	path = tools/kafka
 	url = https://github.com/o1eksandr-sydorenko/cpt-kafka-tool.git
+[submodule "tools/kong"]
+	path = tools/kong
+	url = https://github.com/o1eksandr-sydorenko/cpt-kong-tool.git
+[submodule "tools/keycloak"]
+	path = tools/keycloak
+	url = https://github.com/o1eksandr-sydorenko/cpt-keycloak-tool.git
+[submodule "libs/graphql"]
+	path = libs/graphql
+	url = https://github.com/o1eksandr-sydorenko/cpt-graphql-lib.git
