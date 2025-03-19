@@ -165,7 +165,7 @@ services:
     restart: on-failure
     command: sh -c "npx nx prisma-generate users
       && npx nx prisma-deploy users
-      && npm start users --verbose"
+      && npm start users"
 
 volumes:
   database:

@@ -26,6 +26,12 @@ For example:
 git submodule add https://github.com/o1eksandr-sydorenko/cpt-users-app.git apps/users
 ```
 
+## Push all submodules
+
+```bash
+git submodule foreach --recursive 'git push'
+```
+
 # NX Prisma commands [read more](https://github.com/gperdomor/nx-tools/blob/main/plugins/nx-prisma/README.md)
 
 To init app with prisma:
