@@ -11,7 +11,8 @@
     "test": "nx test",
     "start:all": "nx run-many --target=serve --all --parallel",
     "build:all": "nx run-many --target=build --all --parallel",
-    "nx:pzizma:init": "nx g @nx-tools/nx-prisma:configuration"
+    "nx:pzizma:init": "nx g @nx-tools/nx-prisma:configuration",
+    "publish-lib": "./scripts/publish-lib.sh"
   },
   "private": true,
   "devDependencies": {
@@ -22,7 +23,6 @@
     "@nx/eslint": "19.8.4",
     "@nx/eslint-plugin": "19.8.4",
     "@nx/jest": "20.4.0",
-    "@nx/js": "20.4.0",
     "@nx/node": "19.8.4",
     "@nx/plugin": "^20.4.0",
     "@nx/workspace": "20.4.0",

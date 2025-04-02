@@ -32,6 +32,20 @@ git submodule add https://github.com/o1eksandr-sydorenko/cpt-users-app.git apps/
 git submodule foreach --recursive 'git push'
 ```
 
+## Work with libs
+
+### Publish the lib
+
+```bash
+npm run publish-lib -- graphql
+```
+
+### Check missed dependencies which must be added to lib or app
+
+```bash
+npx depcheck libs/graphql
+```
+
 # NX Prisma commands [read more](https://github.com/gperdomor/nx-tools/blob/main/plugins/nx-prisma/README.md)
 
 To init app with prisma:
